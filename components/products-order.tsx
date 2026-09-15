@@ -3,11 +3,12 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { trackMetaEvent } from "@/components/meta-pixel"
 import type { ProductDTO, SettingsDTO } from "@/lib/types"
 import { Minus, Plus, ShoppingBag, Truck } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 function effectivePrice(p: ProductDTO) {
   return p.discountPrice > 0 ? p.discountPrice : p.price;
@@ -33,12 +34,45 @@ export function ProductsOrder({
   });
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const hasInitiatedCheckout = useRef(false);
+  const hasTrackedLead = useRef(false);
+
+  useEffect(() => {
+    if (products.length === 0) return;
+
+    trackMetaEvent("ViewContent", {
+      content_ids: products.map((product) => product._id),
+      content_type: "product",
+      contents: products.map((product) => ({
+        id: product._id,
+        item_price: effectivePrice(product),
+      })),
+    });
+  }, [products]);
 
   function setQty(id: string, next: number) {
+    const previousQty = quantities[id] ?? 0;
     setQuantities((prev) => {
       const clamped = Math.max(0, Math.min(100, next));
       return { ...prev, [id]: clamped };
     });
+
+    if (previousQty === 0 && next > 0) {
+      const product = products.find((item) => item._id === id);
+      if (product) {
+        trackMetaEvent("AddToCart", {
+          value: effectivePrice(product),
+          currency: "BDT",
+          content_ids: [product._id],
+          content_type: "product",
+          contents: [{
+            id: product._id,
+            quantity: 1,
+            item_price: effectivePrice(product),
+          }],
+        });
+      }
+    }
   }
 
   const selectedItems = useMemo(
@@ -62,6 +96,19 @@ export function ProductsOrder({
       : settings.outsideDhakaCharge;
   const total = subtotal + (selectedItems.length > 0 ? shippingCharge : 0);
 
+  function handleCheckoutStart() {
+    if (hasInitiatedCheckout.current || selectedItems.length === 0) return;
+
+    hasInitiatedCheckout.current = true;
+    trackMetaEvent("InitiateCheckout", {
+      value: total,
+      currency: "BDT",
+      content_ids: selectedItems.map((item) => item.product._id),
+      content_type: "product",
+      num_items: selectedItems.reduce((sum, item) => sum + item.qty, 0),
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg("");
@@ -79,6 +126,16 @@ export function ProductsOrder({
       setStatus("error");
       setErrorMsg("অনুগ্রহ করে নাম, ঠিকানা ও ফোন নম্বর পূরণ করুন।");
       return;
+    }
+
+    if (!hasTrackedLead.current) {
+      hasTrackedLead.current = true;
+      trackMetaEvent("Lead", {
+        value: total,
+        currency: "BDT",
+        content_ids: selectedItems.map((item) => item.product._id),
+        content_type: "product",
+      });
     }
 
     setStatus("submitting");
@@ -102,6 +159,12 @@ export function ProductsOrder({
         return;
       }
 
+      trackMetaEvent("Purchase", {
+        value: data.order.total,
+        currency: "BDT",
+        content_ids: data.order.items.map((item: { productId: string }) => item.productId),
+        content_type: "product",
+      });
       setStatus("idle");
       setQuantities({});
       setForm({ customerName: "", phone: "", address: "", email: "" });
@@ -216,6 +279,7 @@ export function ProductsOrder({
 
           <form
             onSubmit={handleSubmit}
+            onFocus={handleCheckoutStart}
             className="flex flex-col gap-6 rounded-3xl border border-border/60 bg-card p-6 shadow-sm sm:p-8"
           >
             {/* Selected items summary */}

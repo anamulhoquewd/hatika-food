@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/next'
+import { MetaPixel } from '@/components/meta-pixel'
 import type { Metadata, Viewport } from 'next'
 import { Hind_Siliguri } from 'next/font/google'
 import './globals.css'
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="bn" className={`light ${hindSiliguri.variable}`}>
       <body className="font-sans antialiased">
         {children}
+        <MetaPixel pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
