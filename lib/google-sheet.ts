@@ -1,11 +1,37 @@
-import { google } from "googleapis"
-import type { OrderPayload } from "./types"
+import { google } from "googleapis";
+import type { OrderPayload } from "./types";
 
 /*
  * Appends an order as a new row to a Google Sheet using a service account.
  * Supports either GCP_SERVICE_ACCOUNT JSON or the legacy split credentials.
  * Safe to call even when not configured — it will skip gracefully.
  */
+
+function formatDate(dateString: Date) {
+  const date = new Date(dateString);
+
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const day = date.getDate();
+  const month = months[date.getMonth()]; // getMonth() শুরু হয় ০ থেকে (০ = Jan, ৮ = Sep)
+  const year = date.getFullYear();
+
+  return `${day} ${month}, ${year}`;
+}
+
 export async function appendOrderToSheet(order: OrderPayload): Promise<void> {
   const {
     GCP_SERVICE_ACCOUNT,
@@ -19,25 +45,24 @@ export async function appendOrderToSheet(order: OrderPayload): Promise<void> {
 
   if (GCP_SERVICE_ACCOUNT && (!serviceAccountEmail || !privateKey)) {
     try {
-      const serviceAccountJson = GCP_SERVICE_ACCOUNT.replace(
-        /^\$'/,
-        "",
-      ).replace(/'$/, "").replace(/\\r\\n/g, "\n");
-      const serviceAccount = JSON.parse(
-        serviceAccountJson,
-      ) as { client_email?: string; private_key?: string };
+      const serviceAccountJson = GCP_SERVICE_ACCOUNT.replace(/^\$'/, "")
+        .replace(/'$/, "")
+        .replace(/\\r\\n/g, "\n");
+      const serviceAccount = JSON.parse(serviceAccountJson) as {
+        client_email?: string;
+        private_key?: string;
+      };
       serviceAccountEmail = serviceAccount.client_email;
       privateKey = serviceAccount.private_key;
     } catch (error) {
-      console.log("appendOrderToSheet: invalid GCP_SERVICE_ACCOUNT JSON", error);
+      console.log(
+        "appendOrderToSheet: invalid GCP_SERVICE_ACCOUNT JSON",
+        error,
+      );
     }
   }
 
-  if (
-    !serviceAccountEmail ||
-    !privateKey ||
-    !GOOGLE_SHEET_ID
-  ) {
+  if (!serviceAccountEmail || !privateKey || !GOOGLE_SHEET_ID) {
     console.log(
       "appendOrderToSheet: Google Sheets not configured, skipping. Order:",
       order.customerName,
@@ -66,7 +91,7 @@ export async function appendOrderToSheet(order: OrderPayload): Promise<void> {
       .map((row) => (row[0]?.trim() ? Number(row[0]) : Number.NaN))
       .find((value) => Number.isFinite(value));
     const orderId = (lastOrderId ?? 1000) + 1;
-    const timestamp = new Date().toISOString();
+    const timestamp = formatDate(new Date());
 
     const values = order.items.map((item, index) => [
       orderId,

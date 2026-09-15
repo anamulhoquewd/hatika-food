@@ -14,8 +14,13 @@ export default async function OrderSuccessPage() {
       <SiteHeader />
       <main className="flex flex-1 items-center justify-center bg-secondary/10 px-4 py-16">
         <section className="w-full max-w-xl rounded-3xl border border-border/60 bg-card p-8 text-center shadow-lg sm:p-12">
-          <CheckCircle2 className="mx-auto h-16 w-16 text-primary" aria-hidden="true" />
-          <h1 className="mt-6 text-3xl font-bold text-secondary sm:text-4xl">{settings.successTitle}</h1>
+          <CheckCircle2
+            className="mx-auto h-16 w-16 text-primary"
+            aria-hidden="true"
+          />
+          <h1 className="mt-6 text-3xl font-bold sm:text-4xl">
+            {settings.successTitle}
+          </h1>
           <p className="mx-auto mt-4 max-w-md whitespace-pre-line text-lg leading-8 text-muted-foreground">
             {settings.successMessage}
           </p>
@@ -29,5 +34,5 @@ export default async function OrderSuccessPage() {
       </main>
       <SiteFooter />
     </div>
-  )
+  );
 }
