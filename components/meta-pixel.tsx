@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import Script from "next/script"
-import { usePathname } from "next/navigation"
-import { useEffect, useRef } from "react"
+import { usePathname } from "next/navigation";
+import Script from "next/script";
+import { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
-    fbq?: (...args: unknown[]) => void
-    _fbq?: (...args: unknown[]) => void
+    fbq?: (...args: unknown[]) => void;
+    _fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -16,25 +16,25 @@ export function trackMetaEvent(
   parameters?: Record<string, unknown>,
 ) {
   if (typeof window !== "undefined" && window.fbq) {
-    window.fbq("track", eventName, parameters)
+    window.fbq("track", eventName, parameters);
   }
 }
 
 export function MetaPixel({ pixelId }: { pixelId?: string }) {
-  const pathname = usePathname()
-  const hasMounted = useRef(false)
+  const pathname = usePathname();
+  const hasMounted = useRef(false);
 
   useEffect(() => {
     if (!hasMounted.current) {
-      hasMounted.current = true
-      return
+      hasMounted.current = true;
+      return;
     }
     if (window.fbq) {
-      window.fbq("track", "PageView")
+      window.fbq("track", "PageView");
     }
-  }, [pathname])
+  }, [pathname]);
 
-  if (!pixelId) return null
+  if (!pixelId) return null;
 
   return (
     <>
@@ -52,5 +52,5 @@ fbq('init','${pixelId}');`}
         dangerouslySetInnerHTML={{ __html: "fbq('track', 'PageView');" }}
       />
     </>
-  )
+  );
 }
