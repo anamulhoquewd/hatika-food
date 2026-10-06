@@ -1,14 +1,15 @@
 "use client";
 
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { trackMetaEvent } from "@/components/meta-pixel"
-import type { ProductDTO, SettingsDTO } from "@/lib/types"
-import { Minus, Plus, ShoppingBag, Truck } from "lucide-react"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { trackMetaEvent } from "@/components/meta-pixel";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import type { ProductDTO, SettingsDTO } from "@/lib/types";
+import { Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 function effectivePrice(p: ProductDTO) {
   return p.discountPrice > 0 ? p.discountPrice : p.price;
@@ -65,11 +66,13 @@ export function ProductsOrder({
           currency: "BDT",
           content_ids: [product._id],
           content_type: "product",
-          contents: [{
-            id: product._id,
-            quantity: 1,
-            item_price: effectivePrice(product),
-          }],
+          contents: [
+            {
+              id: product._id,
+              quantity: 1,
+              item_price: effectivePrice(product),
+            },
+          ],
         });
       }
     }
@@ -162,7 +165,9 @@ export function ProductsOrder({
       trackMetaEvent("Purchase", {
         value: data.order.total,
         currency: "BDT",
-        content_ids: data.order.items.map((item: { productId: string }) => item.productId),
+        content_ids: data.order.items.map(
+          (item: { productId: string }) => item.productId,
+        ),
         content_type: "product",
       });
       setStatus("idle");
@@ -236,25 +241,21 @@ export function ProductsOrder({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between gap-3 rounded-full border border-border bg-secondary/40 p-1.5">
+                    <div className="flex items-center rounded-full border border-border bg-primary p-1.5">
                       <button
                         type="button"
-                        aria-label="পরিমাণ কমান"
-                        onClick={() => setQty(p._id, qty - 1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow-sm transition-colors hover:bg-muted"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="min-w-[2ch] text-center font-semibold tabular-nums">
-                        {qty}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="পরিমাণ বাড়ান"
-                        onClick={() => setQty(p._id, qty + 1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform hover:scale-105"
+                        aria-label="Add to cart"
+                        onClick={() => {
+                          toast.success(`${p.name} কার্টে যোগ হয়েছে`, {
+                            position: "top-center",
+                          });
+                          setQty(p._id, qty + 1);
+                        }}
+                        disabled={qty > 0}
+                        className="flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 text-white"
                       >
                         <Plus className="h-4 w-4" />
+                        {qty > 0 ? "Added to cart" : "Add to cart"}
                       </button>
                     </div>
                   </div>
@@ -297,15 +298,46 @@ export function ProductsOrder({
                   {selectedItems.map((i) => (
                     <li
                       key={i.product._id}
-                      className="flex items-center justify-between rounded-2xl bg-secondary/50 px-4 py-3 text-sm"
+                      className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl bg-secondary/50 px-4 py-3 text-sm"
                     >
-                      <span className="font-medium text-foreground">
-                        {i.product.name}{" "}
-                        <span className="text-muted-foreground">x {i.qty}</span>
+                      <span className="min-w-0 flex-1 font-medium text-foreground">
+                        {i.product.name}
                       </span>
-                      <span className="font-semibold text-foreground">
-                        ৳{effectivePrice(i.product) * i.qty}
-                      </span>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={`পরিমাণ কমান ${i.product.name}`}
+                            onClick={() => setQty(i.product._id, i.qty - 1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="min-w-[2ch] text-center font-semibold tabular-nums">
+                            {i.qty}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`পরিমাণ বাড়ান ${i.product.name}`}
+                            onClick={() => setQty(i.product._id, i.qty + 1)}
+                            disabled={i.qty >= 100}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <span className="font-semibold text-foreground">
+                          ৳{effectivePrice(i.product) * i.qty}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`${i.product.name} কার্ট থেকে সরান`}
+                          onClick={() => setQty(i.product._id, 0)}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-destructive transition-colors hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -352,7 +384,7 @@ export function ProductsOrder({
                   required
                 />
               </div>
-              <div className="grid gap-2">
+              {/* <div className="grid gap-2">
                 <Label htmlFor="email">ইমেইল</Label>
                 <Input
                   id="email"
@@ -363,7 +395,7 @@ export function ProductsOrder({
                   }
                   placeholder="আপনার ইমেইল (ঐচ্ছিক)"
                 />
-              </div>
+              </div> */}
             </div>
 
             {/* Shipping options */}
@@ -454,7 +486,7 @@ export function ProductsOrder({
             >
               {status === "submitting"
                 ? "প্রক্রিয়াকরণ হচ্ছে..."
-                : `অর্ডার করুন — ৳${total}`}
+                : `অর্ডার করুন`}
             </button>
           </form>
         </div>
